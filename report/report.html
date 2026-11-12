@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lab 03 Report</title>
+<style>
+  @page { size: A4; margin: 11mm 13mm 10mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; font-size: 8.6pt; line-height: 1.32; color: #0b0b0b; margin: 0; }
+  h1 { font-size: 14pt; margin: 0 0 1mm; }
+  .meta { color: #52514e; font-size: 8pt; margin-bottom: 2.2mm; border-bottom: 1.5px solid #0b0b0b; padding-bottom: 1.6mm; }
+  .meta a { color: #1c5cab; text-decoration: none; }
+  h2 { font-size: 9.6pt; margin: 2.2mm 0 0.9mm; color: #104281; }
+  p { margin: 0 0 1.2mm; }
+  table { border-collapse: collapse; width: 100%; margin: 0.6mm 0 1.4mm; font-size: 8.2pt; }
+  th, td { border-bottom: 1px solid #e1e0d9; padding: 0.7mm 1.6mm; text-align: left; vertical-align: top; }
+  th { border-bottom: 1.4px solid #52514e; font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.hl td { background: #eef4fc; }
+  .two { display: grid; grid-template-columns: 1.08fr 1fr; gap: 4mm; }
+  th { white-space: nowrap; }
+  code, .s { font-family: Consolas, ui-monospace, monospace; font-size: 7.9pt; }
+  .tag { display: inline-block; font-size: 7pt; font-weight: 700; padding: 0 1.4mm; border-radius: 2px; color: #fff; }
+  .bad { background: #d03b3b; } .meaning { background: #c98500; } .mem { background: #6250d6; } .good { background: #0ca30c; }
+  ul { margin: 0 0 1mm; padding-left: 4.5mm; } li { margin-bottom: 0.6mm; }
+  .note { color: #52514e; font-size: 7.6pt; }
+</style>
+</head>
+<body>
+<h1>Lab 03: Chaotic Text Generator (report)</h1>
+<div class="meta">
+  Repository: <a href="https://github.com/mustapha005/LAB-HMM">github.com/mustapha005/LAB-HMM</a> &nbsp;·&nbsp;
+  Application: <a href="https://mustapha005-lab-hmm.streamlit.app">mustapha005-lab-hmm.streamlit.app</a> &nbsp;·&nbsp;
+  All numbers below were measured with <code>src/evaluate.py</code>, <code>src/evaluate_real.py</code> and the app (seed 42, 500 sentences per setting).
+</div>
+
+<h2>1. Problem and solution</h2>
+<p>We need to generate new sentences and to recover the hidden structure (part-of-speech tags) of a sentence, and to <b>prove</b> the quality with metrics on hundreds of sentences rather than three examples.
+A supervised HMM is estimated by counting on 960 training sentences (split by document): start, transition P(tag | previous tag) and emission P(word | tag) tables with add-k smoothing (k = 0.01).
+It generates by sampling tags, then words, with temperature (weights count<sup>1/T</sup>), and tags sentences with Viterbi in log space.
+Role-split states (S / O / P) give the first-order model the memory it lacks; a trigram model is the baseline.
+A Streamlit test bench compares the three generators with four metrics and exposes a Viterbi tagger.</p>
+
+<h2>2. Metrics at T = 1.0 (500 sentences, seed 42)</h2>
+<div class="two">
+<table>
+  <tr><th>Model</th><th class="n">Valid pattern</th><th class="n">Plausible S-V</th><th class="n">Novel</th><th class="n">Distinct&#8209;2</th></tr>
+  <tr><td>Plain HMM</td><td class="n">16.2%</td><td class="n">14.8%</td><td class="n">99.8%</td><td class="n">0.198</td></tr>
+  <tr class="hl"><td>Role-split HMM</td><td class="n">100%</td><td class="n">60.6%</td><td class="n">99.4%</td><td class="n">0.148</td></tr>
+  <tr><td>Trigram</td><td class="n">57.0%</td><td class="n">76.0%</td><td class="n">91.2%</td><td class="n">0.105</td></tr>
+</table>
+<p><b>Why the plain HMM scores low:</b> its only state after a noun is NOUN, and P(next | NOUN) is VERB 0.39, PREP 0.22, PUNCT 0.39 whatever the noun's role. So it ends right after the subject (<span class="s">the doctors .</span>) or adds a second verb after the object. <b>Why role-split reaches 100%:</b> NOUN_S can only go to VERB, NOUN_O to PREP or PUNCT, NOUN_P to PUNCT. Every sampled state path is one of the 16 training sequences. Viterbi accuracy is 100% for both models (including <i>watch</i>, 37 of 37).</p>
+</div>
+
+<h2>3. Temperature choice</h2>
+<ul>
+  <li><b>Writing toy: role-split HMM at T = 1.5.</b> Structure stays at 100% at every temperature, while diversity rises (distinct-2 0.148 → 0.161) and odd word pairs (56.2% plausible) are welcome surprises in a toy.</li>
+  <li><b>Autocomplete: trigram at T = 0.5.</b> Only the trigram can continue the user's words, and a low temperature gives its safest output (63.6% valid, 79.2% plausible against 44.2% / 68.6% at T = 2.5). Repetition and some copying (90.6% novel) are acceptable for predictable suggestions.</li>
+</ul>
+
+<h2>4. Generated sentences and failure types</h2>
+<table>
+  <tr><th style="width:36%">Sentence (model, T = 1.0 unless noted)</th><th style="width:12%">Type</th><th>Cause</th></tr>
+  <tr><td class="s">the children eat the bread at the park .<br><span class="note">role-split HMM</span></td><td><span class="tag good">GOOD</span></td><td>Valid pattern, seen subject-verb pair (children, eat), not in the training set: a genuinely new, correct sentence.</td></tr>
+  <tr><td class="s">the boys visit the rice sell the young farmers .<br><span class="note">plain HMM</span></td><td><span class="tag bad">STRUCTURE</span></td><td>After the object <i>rice</i> the state is just NOUN, and P(VERB | NOUN) = 0.39, so a second verb is sampled. The first-order model has no memory that the verb was already used.</td></tr>
+  <tr><td class="s">the foxes lose by the school .<br><span class="note">role-split HMM</span></td><td><span class="tag meaning">MEANING</span></td><td>Valid pattern, but the pair (foxes, lose) never occurs: each word is emitted from its state alone, independently of the other words.</td></tr>
+  <tr><td class="s">the girls leave the park .<br><span class="note">trigram, T = 0.5</span></td><td><span class="tag mem">MEMORISATION</span></td><td>Copied verbatim from the training set: the trigram follows high-count word paths, worse at low T. Not "creative".</td></tr>
+</table>
+
+<h2>5. What state splitting changed, and what it did not change</h2>
+<p>Splitting NOUN, ADJ and DET by role (12 states instead of 6) changed the <b>structure</b>. The valid tag pattern jumps from 16.2% to 100% at every temperature, because the state now records where we are in the sentence, the information the Markov assumption throws away. Plausible subject-verb also rises from 14.8% to 60.6%: every sentence now has a verb, and the subject is drawn from NOUN_S, which only emits nouns seen as subjects.
+It did <b>not</b> change the <b>meaning</b>. Emissions are still P(word | state), so the verb is chosen without looking at the subject. Plausible subject-verb (60.6%) stays below the trigram (76.0%), which sees the actual previous words. The vocabulary is the same 61 words, Viterbi accuracy was already 100%, and diversity drops (distinct-2 0.198 → 0.148) because fewer wild combinations are possible. Richer states fix grammar, not semantics.</p>
+
+<h2>6. Real-data test: the same HMM on Universal Dependencies English EWT</h2>
+<div class="two">
+<div>
+<table>
+  <tr><th>Data, model</th><th class="n">Accuracy</th><th class="n">Known</th><th class="n">Unknown</th><th class="n">Sentence</th></tr>
+  <tr><td>Synthetic, HMM</td><td class="n">100%</td><td class="n">100%</td><td class="n">n.a.</td><td class="n">100%</td></tr>
+  <tr><td>EWT, most-frequent tag</td><td class="n">86.2%</td><td class="n">90.8%</td><td class="n">28.6%</td><td class="n">31.9%</td></tr>
+  <tr class="hl"><td>EWT, HMM + Viterbi</td><td class="n">88.0%</td><td class="n">92.9%</td><td class="n">28.2%</td><td class="n">40.4%</td></tr>
+</table>
+<table>
+  <tr><th></th><th class="n">Synthetic</th><th class="n">Real text (EWT)</th></tr>
+  <tr><td>Tags / vocabulary</td><td class="n">6 / 61</td><td class="n">17 / 16,654</td></tr>
+  <tr><td>Distinct tag sequences / train sentences</td><td class="n">16 / 960</td><td class="n">10,359 / 12,544</td></tr>
+  <tr><td>Unknown test tokens</td><td class="n">0%</td><td class="n">7.5%</td></tr>
+</table>
+</div>
+<p>The 100% on the synthetic corpus says more about the corpus than about the model. Its grammar is unambiguous once the previous tag is known, and every test word was seen in training. On real text the same code gains only 1.9 points (88.04% against 86.16%) over the most-frequent-tag baseline. Almost every sentence has its own tag sequence, so a first-order transition carries little information, and real ambiguity remains (PROPN tagged NOUN 281 times, VERB tagged AUX 105 times). Unknown words (7.5% of tokens) are tagged at only 28.2%. Their smoothed emission k / (count(tag) + k·V) is largest for rare tags, so they drift to X and INTJ (PROPN tagged X 195 times, PROPN tagged INTJ 137 times). The valid-tag-pattern metric is meaningless here.
+<span class="note">88.0% instead of the guide's 88.1%: the EWT treebank on GitHub has been updated since the guide was written.</span></p>
+</div>
+</body>
+</html>
