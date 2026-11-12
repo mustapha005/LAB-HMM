@@ -2,7 +2,7 @@
 
 A **test bench for text generators**. It generates sentences with a part-of-speech Hidden Markov Model (HMM) or a trigram model, shows the hidden tag sequence behind each sentence, scores every batch with four metrics, and tags any sentence you type with the Viterbi algorithm.
 
-**Live app:** https://mustapha005-lab-hmm.streamlit.app
+**Live app:** https://lab-hmm-6wybncnxegvsgbarzejutn.streamlit.app
 
 | Generate (role-split HMM) | Viterbi tagger |
 |---|---|

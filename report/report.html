@@ -24,13 +24,19 @@
   .bad { background: #d03b3b; } .meaning { background: #c98500; } .mem { background: #6250d6; } .good { background: #0ca30c; }
   ul { margin: 0 0 1mm; padding-left: 4.5mm; } li { margin-bottom: 0.6mm; }
   .note { color: #52514e; font-size: 7.6pt; }
+  .appendix { break-before: page; }
+  .appendix h2 { font-size: 11pt; margin-top: 0; }
+  figure { margin: 0 0 3.2mm; break-inside: avoid; text-align: center; }
+  figure img { display: block; margin: 0 auto; max-width: 100%; max-height: 74mm; border: 1px solid #c3c2b7; border-radius: 2px; }
+  figcaption { font-size: 8pt; color: #52514e; margin-top: 1mm; text-align: left; }
+  figcaption b { color: #0b0b0b; }
 </style>
 </head>
 <body>
 <h1>Lab 03: Chaotic Text Generator (report)</h1>
 <div class="meta">
   Repository: <a href="https://github.com/mustapha005/LAB-HMM">github.com/mustapha005/LAB-HMM</a> &nbsp;·&nbsp;
-  Application: <a href="https://mustapha005-lab-hmm.streamlit.app">mustapha005-lab-hmm.streamlit.app</a> &nbsp;·&nbsp;
+  Application: <a href="https://lab-hmm-6wybncnxegvsgbarzejutn.streamlit.app">lab-hmm-6wybncnxegvsgbarzejutn.streamlit.app</a> &nbsp;·&nbsp;
   All numbers below were measured with <code>src/evaluate.py</code>, <code>src/evaluate_real.py</code> and the app (seed 42, 500 sentences per setting).
 </div>
 
@@ -90,5 +96,29 @@ It did <b>not</b> change the <b>meaning</b>. Emissions are still P(word | state)
 <p>The 100% on the synthetic corpus says more about the corpus than about the model. Its grammar is unambiguous once the previous tag is known, and every test word was seen in training. On real text the same code gains only 1.9 points (88.04% against 86.16%) over the most-frequent-tag baseline. Almost every sentence has its own tag sequence, so a first-order transition carries little information, and real ambiguity remains (PROPN tagged NOUN 281 times, VERB tagged AUX 105 times). Unknown words (7.5% of tokens) are tagged at only 28.2%. Their smoothed emission k / (count(tag) + k·V) is largest for rare tags, so they drift to X and INTJ (PROPN tagged X 195 times, PROPN tagged INTJ 137 times). The valid-tag-pattern metric is meaningless here.
 <span class="note">88.0% instead of the guide's 88.1%: the EWT treebank on GitHub has been updated since the guide was written.</span></p>
 </div>
+
+<section class="appendix">
+<h2>Appendix: the deployed application (lab-hmm-6wybncnxegvsgbarzejutn.streamlit.app)</h2>
+<figure>
+  <img src="../screenshots/live/1_generate_plain_hmm.png" alt="Generate tab, plain HMM">
+  <figcaption><b>Figure 1. Generate tab, plain HMM (T = 1.0, seed 42, 500 sentences).</b> The metrics panel reproduces the guide (16.2% valid tag pattern). Each row shows the words, the hidden tag sequence and a valid / invalid mark. Typical structure failures are visible: <i>the quiet school .</i> (no verb) and <i>the boys visit the rice sell the young farmers .</i> (second verb).</figcaption>
+</figure>
+<figure>
+  <img src="../screenshots/live/2_tagger_viterbi.png" alt="Viterbi tagger">
+  <figcaption><b>Figure 2. Tagger (Viterbi) on the public URL.</b> In <i>the children watch the watch in the park .</i> the ambiguous word <i>watch</i> is tagged VERB, then NOUN, from the surrounding tags. Unknown words get a visible warning.</figcaption>
+</figure>
+<figure>
+  <img src="../screenshots/live/3_compare_models.png" alt="Compare models">
+  <figcaption><b>Figure 3. Compare models.</b> The three models at the same settings (T = 1.0, seed 42, 500 sentences) give exactly the table of section 2. The temperature sweep below it plots valid tag pattern against T.</figcaption>
+</figure>
+<figure>
+  <img src="../screenshots/live/4_heatmap_plain.png" alt="Transition heat-map, plain HMM">
+  <figcaption><b>Figure 4. Transition heat-map, plain HMM.</b> The NOUN row is split between VERB 0.39, PREP 0.22 and PUNCT 0.39: the state cannot tell a subject from an object, which is why only 16.2% of the sentences have a valid pattern.</figcaption>
+</figure>
+<figure>
+  <img src="../screenshots/live/5_heatmap_role_split.png" alt="Transition heat-map, role-split HMM">
+  <figcaption><b>Figure 5. Transition heat-map, role-split HMM.</b> NOUN_S → VERB 1.00, NOUN_O → PREP 0.66 or PUNCT 0.34, NOUN_P → PUNCT 1.00: the role states make every path a valid sentence (100% valid tag pattern).</figcaption>
+</figure>
+</section>
 </body>
 </html>

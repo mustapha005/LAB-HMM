@@ -251,7 +251,7 @@ with tab_gen:
         n_valid = sum(r["valid"] for r in rows)
         n_copied = sum(r["copied"] for r in rows)
         st.caption(f"{n_valid} of {len(rows)} sentences have a valid tag pattern; "
-                   f"{n_copied} are copied from the training set (memorisation).")
+                   f"{n_copied} {'is' if n_copied == 1 else 'are'} copied from the training set (memorisation).")
 
         is_trigram = s["model"] == "Trigram"
         df = pd.DataFrame({
